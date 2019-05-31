@@ -8,8 +8,9 @@ import org.apache.hadoop.hbase.io.compress.Compression
 import org.apache.hadoop.hbase.mapreduce.{TableInputFormat, TableOutputFormat}
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.hbase.{HBaseConfiguration, HColumnDescriptor, HTableDescriptor, TableName}
-import org.apache.hadoop.io.Writable
+import org.apache.hadoop.io.{NullWritable, Writable}
 import org.apache.hadoop.mapreduce.Job
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types._
@@ -63,6 +64,8 @@ object HbaseUtil {
   //TODO
   def tranHbaseRDD2DF(spark:SparkSession,keyName:String,qualifiers:Array[(String,String)], tableName: String)={
     val fields: Seq[StructField] = this.getSchemaFromColumns(keyName,qualifiers)
+
+
   }
 
   def getSchemaFromColumns(keyName:String,qualifiers:Array[(String,String)])={
@@ -110,12 +113,40 @@ object HbaseUtil {
               if (value != null) {
                 put.addColumn(Bytes.toBytes(family), Bytes.toBytes(col), Bytes.toBytes(value))
               }
+            case "Int" =>
+              val value: Int = row.getAs[Int](family + "_" + col)
+              if (value!=null){
+                put.addColumn(Bytes.toBytes(family),Bytes.toBytes(col),Bytes.toBytes(value))
+              }
+            case "Boolean" =>
+              val value: Boolean = row.getAs[Boolean](family + "_" + col)
+              if (value!=null){
+                put.addColumn(Bytes.toBytes(family),Bytes.toBytes(col),Bytes.toBytes(value))
+              }
+            case "Long"=>
+              val value: Long = row.getAs[Long](family + "_" + col)
+              if (value!=null){
+                put.addColumn(Bytes.toBytes(family),Bytes.toBytes(col),Bytes.toBytes(value))
+              }
           }
         }
       }
       (new ImmutableBytesWritable, put)
     }).filter(!_._2.isEmpty)
     rdd.saveAsNewAPIHadoopDataset(job.getConfiguration)
+  }
+
+  def bulkWriteFromRDD(tableName:String)={
+    val conf: Configuration = this.hbaseConf
+    val job: Job = Job.getInstance(conf)
+    job.setOutputFormatClass(classOf[TextOutputFormat[NullWritable]])
+    job.setOutputKeyClass(classOf[ImmutableBytesWritable])
+    job.setOutputValueClass(classOf[NullWritable])
+    job.getConfiguration.set(TableOutputFormat.OUTPUT_TABLE,tableName)
+
+
+
+
   }
 
 
