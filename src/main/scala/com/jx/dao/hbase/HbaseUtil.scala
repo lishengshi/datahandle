@@ -145,8 +145,6 @@ object HbaseUtil {
     job.getConfiguration.set(TableOutputFormat.OUTPUT_TABLE,tableName)
 
 
-
-
   }
 
 
